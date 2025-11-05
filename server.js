@@ -236,8 +236,7 @@ app.post('/api/login', async (req, res) => {
           ip_address: cleanIP,
           session_token: sessionToken,
           expires_at: expiresAt.toISOString(),
-          is_active: true,
-          updated_at: new Date().toISOString()
+          is_active: true
         })
         .eq('id', existingSession.id);
 
