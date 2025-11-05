@@ -113,21 +113,14 @@ app.post('/api/login', async (req, res) => {
       });
     }
 
-    // 2. Verificar IP
+    // 2. IP já foi validado pelo middleware global - apenas pegar o IP limpo
     const xForwardedFor = req.headers['x-forwarded-for'];
     const clientIP = xForwardedFor
       ? xForwardedFor.split(',')[0].trim()
       : req.socket.remoteAddress;
     const cleanIP = clientIP.replace('::ffff:', '');
 
-    if (cleanIP !== allowedIP) {
-      console.log('❌ Tentativa de login com IP não autorizado:', cleanIP, '| Usuário:', username);
-      await logLoginAttempt(username, false, 'IP não autorizado', deviceToken, cleanIP);
-      return res.status(403).json({ 
-        error: 'IP não autorizado',
-        message: `Seu IP (${cleanIP}) não tem permissão para acessar este sistema`
-      });
-    }
+    console.log('🔐 Tentativa de login - Usuário:', username, '| IP:', cleanIP);
 
     // 3. Verificar horário comercial
     const now = new Date();
@@ -193,31 +186,45 @@ app.post('/api/login', async (req, res) => {
     const truncatedUserAgent = userAgent.substring(0, 95);
     const truncatedDeviceName = userAgent.substring(0, 95);
 
-    // 8. Verificar se este dispositivo específico já existe
+    // 8. Verificar se este dispositivo JÁ EXISTE (globalmente, não só para este usuário)
     const { data: existingDevice } = await supabase
       .from('authorized_devices')
       .select('*')
-      .eq('user_id', userData.id)
       .eq('device_token', deviceToken)
-      .eq('is_active', true)
       .maybeSingle();
 
     if (existingDevice) {
-      console.log('ℹ️ Dispositivo já registrado - atualizando último acesso');
+      console.log('ℹ️ Dispositivo já existe no sistema');
       
-      // Atualizar último acesso
-      await supabase
+      // Verificar se está vinculado a OUTRO usuário
+      if (existingDevice.user_id !== userData.id) {
+        console.log('⚠️ Dispositivo vinculado a outro usuário - atualizando para o usuário atual');
+      }
+      
+      // Atualizar dispositivo com novo usuário e dados
+      const { error: updateError } = await supabase
         .from('authorized_devices')
         .update({
+          user_id: userData.id,
           ip_address: cleanIP,
           user_agent: truncatedUserAgent,
+          device_name: truncatedDeviceName,
+          is_active: true,
           last_login: new Date().toISOString()
         })
-        .eq('id', existingDevice.id);
+        .eq('device_token', deviceToken);
         
-      console.log('✅ Dispositivo atualizado');
+      if (updateError) {
+        console.error('❌ Erro ao atualizar dispositivo:', updateError);
+        return res.status(500).json({ 
+          error: 'Erro ao atualizar dispositivo',
+          details: updateError.message 
+        });
+      }
+      
+      console.log('✅ Dispositivo atualizado com sucesso');
     } else {
-      // Novo dispositivo - adicionar à lista de dispositivos autorizados
+      // Novo dispositivo - criar registro
       const { error: deviceError } = await supabase
         .from('authorized_devices')
         .insert({
