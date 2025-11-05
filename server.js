@@ -139,14 +139,27 @@ app.post('/api/login', async (req, res) => {
     }
 
     // 4. Buscar usuário
+    const usernameSearch = username.toLowerCase().trim();
+    console.log('🔍 Buscando usuário:', usernameSearch);
+    
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
-      .eq('username', username.toLowerCase().trim())
+      .eq('username', usernameSearch)
       .single();
 
     if (userError || !userData) {
-      console.log('❌ Usuário não encontrado:', username, '| Erro:', userError?.message);
+      console.log('❌ Usuário não encontrado:', usernameSearch);
+      console.log('   Erro Supabase:', userError);
+      console.log('   Dados retornados:', userData);
+      
+      // Verificar se existem usuários similares
+      const { data: allUsers } = await supabase
+        .from('users')
+        .select('username')
+        .limit(10);
+      console.log('   Usuários disponíveis no banco:', allUsers);
+      
       await logLoginAttempt(username, false, 'Usuário não encontrado', deviceToken, cleanIP);
       return res.status(401).json({ 
         error: 'Usuário ou senha incorretos' 
