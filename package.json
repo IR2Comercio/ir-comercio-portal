@@ -1,0 +1,18 @@
+{
+  "name": "portal-central-ir",
+  "version": "1.0.0",
+  "description": "Portal Central de Login - I.R. Comércio",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "@supabase/supabase-js": "^2.38.4"
+  },
+  "engines": {
+    "node": ">=18.x"
+  }
+}
