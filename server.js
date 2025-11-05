@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3000;
 // ==========================================
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
-const allowedIP = process.env.ALLOWED_IP || '187.36.172.217';
+const allowedIP = process.env.ALLOWED_IP || '191.248.35.46';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ==========================================
