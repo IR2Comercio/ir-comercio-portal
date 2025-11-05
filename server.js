@@ -31,7 +31,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ==========================================
 app.use((req, res, next) => {
   // Permitir health check e rotas de API sem filtro global
-  // (cada rota de API faz sua própria verificação)
   if (req.path === '/health' || req.path.startsWith('/api/')) {
     return next();
   }
@@ -107,7 +106,7 @@ app.post('/api/login', async (req, res) => {
       });
     }
 
-    // 2. Verificar IP (mantém a verificação aqui)
+    // 2. Verificar IP
     const xForwardedFor = req.headers['x-forwarded-for'];
     const clientIP = xForwardedFor
       ? xForwardedFor.split(',')[0].trim()
@@ -139,24 +138,42 @@ app.post('/api/login', async (req, res) => {
       });
     }
 
-    // 4. Verificar credenciais
+    // 4. Buscar usuário
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
       .eq('username', username.toLowerCase().trim())
-      .eq('password', password)
-      .eq('is_active', true)
       .single();
 
     if (userError || !userData) {
-      console.log('❌ Credenciais inválidas para usuário:', username);
-      await logLoginAttempt(username, false, 'Credenciais inválidas', deviceToken, cleanIP);
+      console.log('❌ Usuário não encontrado:', username, '| Erro:', userError?.message);
+      await logLoginAttempt(username, false, 'Usuário não encontrado', deviceToken, cleanIP);
       return res.status(401).json({ 
         error: 'Usuário ou senha incorretos' 
       });
     }
 
-    // 5. Verificar dispositivo autorizado
+    // 5. Verificar se usuário está ativo
+    if (userData.is_active === false) {
+      console.log('❌ Usuário inativo:', username);
+      await logLoginAttempt(username, false, 'Usuário inativo', deviceToken, cleanIP);
+      return res.status(401).json({ 
+        error: 'Usuário inativo' 
+      });
+    }
+
+    // 6. Verificar senha (texto simples)
+    if (password !== userData.password) {
+      console.log('❌ Senha incorreta para usuário:', username);
+      console.log('   Senha recebida:', password);
+      console.log('   Senha no banco:', userData.password);
+      await logLoginAttempt(username, false, 'Senha incorreta', deviceToken, cleanIP);
+      return res.status(401).json({ 
+        error: 'Usuário ou senha incorretos' 
+      });
+    }
+
+    // 7. Verificar dispositivo autorizado
     const { data: deviceData } = await supabase
       .from('authorized_devices')
       .select('*')
@@ -192,7 +209,7 @@ app.post('/api/login', async (req, res) => {
       console.log('✅ Novo dispositivo autorizado para usuário:', username);
     }
 
-    // 6. Criar sessão
+    // 8. Criar sessão
     const sessionToken = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 16);
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 8);
@@ -212,11 +229,11 @@ app.post('/api/login', async (req, res) => {
       return res.status(500).json({ error: 'Erro ao criar sessão' });
     }
 
-    // 7. Log de sucesso
+    // 9. Log de sucesso
     await logLoginAttempt(username, true, null, deviceToken, cleanIP);
     console.log('✅ Login realizado com sucesso:', username, '| IP:', cleanIP);
 
-    // 8. Retornar dados da sessão
+    // 10. Retornar dados da sessão
     res.json({
       success: true,
       session: {
@@ -330,5 +347,6 @@ app.listen(PORT, () => {
   console.log(`🚀 Portal Central rodando na porta ${PORT}`);
   console.log(`🔒 IP autorizado: ${allowedIP}`);
   console.log(`💾 Supabase configurado: ${supabaseUrl ? 'Sim ✅' : 'Não ❌'}`);
+  console.log('⚠️  Senhas em texto simples - use bcrypt em produção!');
   console.log('='.repeat(50));
 });
