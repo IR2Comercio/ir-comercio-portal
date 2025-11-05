@@ -137,14 +137,14 @@ app.post('/api/login', async (req, res) => {
       });
     }
 
-    // 4. Buscar usuário (CORRIGIDO - busca case-insensitive)
+    // 4. Buscar usuário (case-insensitive)
     const usernameSearch = username.toLowerCase().trim();
     console.log('🔍 Buscando usuário:', usernameSearch);
     
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
-      .ilike('username', usernameSearch) // 🔧 MUDANÇA: ilike ao invés de eq
+      .ilike('username', usernameSearch)
       .single();
 
     if (userError || !userData) {
@@ -168,7 +168,7 @@ app.post('/api/login', async (req, res) => {
       });
     }
 
-    // 6. Verificar senha (texto simples)
+    // 6. Verificar senha
     if (password !== userData.password) {
       console.log('❌ Senha incorreta para usuário:', username);
       await logLoginAttempt(username, false, 'Senha incorreta', deviceToken, cleanIP);
@@ -179,37 +179,47 @@ app.post('/api/login', async (req, res) => {
 
     console.log('✅ Senha correta');
 
-    // 7. Registrar dispositivo (permitir múltiplos dispositivos)
+    // 7. 🔧 CORREÇÃO: Registrar/Atualizar dispositivo (evita erro de chave duplicada)
     const deviceFingerprint = deviceToken + '_' + Date.now();
     const userAgent = req.headers['user-agent'] || 'Unknown';
     const truncatedUserAgent = userAgent.substring(0, 95);
     const truncatedDeviceName = userAgent.substring(0, 95);
 
-    // 8. Verificar se este dispositivo específico já existe
+    // Verificar se dispositivo já existe (independente de is_active)
     const { data: existingDevice } = await supabase
       .from('authorized_devices')
       .select('*')
       .eq('user_id', userData.id)
       .eq('device_token', deviceToken)
-      .eq('is_active', true)
       .maybeSingle();
 
     if (existingDevice) {
       console.log('ℹ️ Dispositivo já registrado - atualizando último acesso');
       
-      // Atualizar último acesso
-      await supabase
+      // Atualizar dispositivo existente e reativar se necessário
+      const { error: updateError } = await supabase
         .from('authorized_devices')
         .update({
           ip_address: cleanIP,
           user_agent: truncatedUserAgent,
-          last_login: new Date().toISOString()
+          last_login: new Date().toISOString(),
+          is_active: true,
+          device_fingerprint: deviceFingerprint
         })
         .eq('id', existingDevice.id);
         
+      if (updateError) {
+        console.error('❌ Erro ao atualizar dispositivo:', updateError);
+        return res.status(500).json({ 
+          error: 'Erro ao atualizar dispositivo',
+          details: updateError.message 
+        });
+      }
       console.log('✅ Dispositivo atualizado');
     } else {
-      // Novo dispositivo - adicionar à lista de dispositivos autorizados
+      console.log('ℹ️ Registrando novo dispositivo');
+      
+      // Criar novo dispositivo
       const { error: deviceError } = await supabase
         .from('authorized_devices')
         .insert({
@@ -218,7 +228,8 @@ app.post('/api/login', async (req, res) => {
           device_fingerprint: deviceFingerprint,
           device_name: truncatedDeviceName,
           ip_address: cleanIP,
-          user_agent: truncatedUserAgent
+          user_agent: truncatedUserAgent,
+          is_active: true
         });
 
       if (deviceError) {
@@ -231,31 +242,67 @@ app.post('/api/login', async (req, res) => {
       console.log('✅ Novo dispositivo registrado para usuário:', username);
     }
 
-    // 9. Criar sessão
+    // 8. 🔧 CORREÇÃO: Criar ou atualizar sessão (evita erro de chave duplicada)
     const sessionToken = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 16);
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 8);
 
-    const { error: sessionError } = await supabase
+    // Verificar se já existe uma sessão ativa para este usuário + dispositivo
+    const { data: existingSession } = await supabase
       .from('active_sessions')
-      .insert({
-        user_id: userData.id,
-        device_token: deviceToken,
-        ip_address: cleanIP,
-        session_token: sessionToken,
-        expires_at: expiresAt.toISOString()
-      });
+      .select('*')
+      .eq('user_id', userData.id)
+      .eq('device_token', deviceToken)
+      .eq('is_active', true)
+      .maybeSingle();
 
-    if (sessionError) {
-      console.error('❌ Erro ao criar sessão:', sessionError);
-      return res.status(500).json({ error: 'Erro ao criar sessão' });
+    if (existingSession) {
+      console.log('ℹ️ Sessão existente encontrada - atualizando');
+      
+      // Atualizar sessão existente
+      const { error: sessionError } = await supabase
+        .from('active_sessions')
+        .update({
+          ip_address: cleanIP,
+          session_token: sessionToken,
+          expires_at: expiresAt.toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingSession.id);
+
+      if (sessionError) {
+        console.error('❌ Erro ao atualizar sessão:', sessionError);
+        return res.status(500).json({ error: 'Erro ao atualizar sessão' });
+      }
+      
+      console.log('✅ Sessão atualizada com sucesso');
+    } else {
+      console.log('ℹ️ Criando nova sessão');
+      
+      // Criar nova sessão
+      const { error: sessionError } = await supabase
+        .from('active_sessions')
+        .insert({
+          user_id: userData.id,
+          device_token: deviceToken,
+          ip_address: cleanIP,
+          session_token: sessionToken,
+          expires_at: expiresAt.toISOString()
+        });
+
+      if (sessionError) {
+        console.error('❌ Erro ao criar sessão:', sessionError);
+        return res.status(500).json({ error: 'Erro ao criar sessão' });
+      }
+      
+      console.log('✅ Nova sessão criada com sucesso');
     }
 
-    // 10. Log de sucesso
+    // 9. Log de sucesso
     await logLoginAttempt(username, true, null, deviceToken, cleanIP);
     console.log('✅ Login realizado com sucesso:', username, '| IP:', cleanIP);
 
-    // 11. Retornar dados da sessão
+    // 10. Retornar dados da sessão
     res.json({
       success: true,
       session: {
