@@ -30,7 +30,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ======== FILTRO DE IP ====================
 // ==========================================
 app.use((req, res, next) => {
-  // Permitir health check e rotas de API sem filtro global
   if (req.path === '/health' || req.path.startsWith('/api/')) {
     return next();
   }
@@ -138,33 +137,27 @@ app.post('/api/login', async (req, res) => {
       });
     }
 
-    // 4. Buscar usuário
+    // 4. Buscar usuário (CORRIGIDO - busca case-insensitive)
     const usernameSearch = username.toLowerCase().trim();
     console.log('🔍 Buscando usuário:', usernameSearch);
     
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
-      .eq('username', usernameSearch)
+      .ilike('username', usernameSearch) // 🔧 MUDANÇA: ilike ao invés de eq
       .single();
 
     if (userError || !userData) {
       console.log('❌ Usuário não encontrado:', usernameSearch);
       console.log('   Erro Supabase:', userError);
-      console.log('   Dados retornados:', userData);
-      
-      // Verificar se existem usuários similares
-      const { data: allUsers } = await supabase
-        .from('users')
-        .select('username')
-        .limit(10);
-      console.log('   Usuários disponíveis no banco:', allUsers);
       
       await logLoginAttempt(username, false, 'Usuário não encontrado', deviceToken, cleanIP);
       return res.status(401).json({ 
         error: 'Usuário ou senha incorretos' 
       });
     }
+
+    console.log('✅ Usuário encontrado:', userData.username);
 
     // 5. Verificar se usuário está ativo
     if (userData.is_active === false) {
@@ -178,44 +171,52 @@ app.post('/api/login', async (req, res) => {
     // 6. Verificar senha (texto simples)
     if (password !== userData.password) {
       console.log('❌ Senha incorreta para usuário:', username);
-      console.log('   Senha recebida:', password);
-      console.log('   Senha no banco:', userData.password);
       await logLoginAttempt(username, false, 'Senha incorreta', deviceToken, cleanIP);
       return res.status(401).json({ 
         error: 'Usuário ou senha incorretos' 
       });
     }
 
-    // 7. Verificar dispositivo autorizado
-    const { data: deviceData } = await supabase
+    console.log('✅ Senha correta');
+
+    // 7. Gerar device_fingerprint único
+    const deviceFingerprint = deviceToken + '_' + Date.now();
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+    const truncatedUserAgent = userAgent.substring(0, 95);
+    const truncatedDeviceName = userAgent.substring(0, 95);
+
+    // 8. Verificar/Criar dispositivo autorizado (CORRIGIDO)
+    const { data: existingDevice } = await supabase
       .from('authorized_devices')
       .select('*')
       .eq('user_id', userData.id)
       .eq('is_active', true)
-      .single();
+      .maybeSingle(); // 🔧 MUDANÇA: maybeSingle ao invés de single
 
-    if (deviceData) {
-      // Dispositivo já existe - verificar se é o mesmo
-      if (deviceData.device_token !== deviceToken) {
-        console.log('❌ Dispositivo não autorizado para usuário:', username);
-        await logLoginAttempt(username, false, 'Dispositivo não autorizado', deviceToken, cleanIP);
-        return res.status(403).json({ 
-          error: 'Este usuário já está vinculado a outro dispositivo' 
-        });
-      }
+    if (existingDevice) {
+      console.log('ℹ️ Dispositivo já existe para usuário:', username);
+      
+      // Atualizar informações do dispositivo
+      await supabase
+        .from('authorized_devices')
+        .update({
+          device_token: deviceToken,
+          device_fingerprint: deviceFingerprint,
+          ip_address: cleanIP,
+          user_agent: truncatedUserAgent,
+          last_login: new Date().toISOString()
+        })
+        .eq('id', existingDevice.id);
+        
+      console.log('✅ Dispositivo atualizado');
     } else {
-      // Primeiro login - autorizar dispositivo
-      const userAgent = req.headers['user-agent'] || 'Unknown';
-      
-      // 🔧 CORREÇÃO: Truncar user-agent para caber no banco
-      const truncatedUserAgent = userAgent.substring(0, 95);
-      const truncatedDeviceName = userAgent.substring(0, 95);
-      
+      // Primeiro login - criar novo dispositivo
       const { error: deviceError } = await supabase
         .from('authorized_devices')
         .insert({
           user_id: userData.id,
           device_token: deviceToken,
+          device_fingerprint: deviceFingerprint, // 🔧 CAMPO OBRIGATÓRIO
           device_name: truncatedDeviceName,
           ip_address: cleanIP,
           user_agent: truncatedUserAgent
@@ -223,12 +224,15 @@ app.post('/api/login', async (req, res) => {
 
       if (deviceError) {
         console.error('❌ Erro ao autorizar dispositivo:', deviceError);
-        return res.status(500).json({ error: 'Erro ao autorizar dispositivo' });
+        return res.status(500).json({ 
+          error: 'Erro ao autorizar dispositivo',
+          details: deviceError.message 
+        });
       }
       console.log('✅ Novo dispositivo autorizado para usuário:', username);
     }
 
-    // 8. Criar sessão
+    // 9. Criar sessão
     const sessionToken = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 16);
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 8);
@@ -248,11 +252,11 @@ app.post('/api/login', async (req, res) => {
       return res.status(500).json({ error: 'Erro ao criar sessão' });
     }
 
-    // 9. Log de sucesso
+    // 10. Log de sucesso
     await logLoginAttempt(username, true, null, deviceToken, cleanIP);
     console.log('✅ Login realizado com sucesso:', username, '| IP:', cleanIP);
 
-    // 10. Retornar dados da sessão
+    // 11. Retornar dados da sessão
     res.json({
       success: true,
       session: {
@@ -269,7 +273,10 @@ app.post('/api/login', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erro no login:', error);
-    res.status(500).json({ error: 'Erro interno no servidor' });
+    res.status(500).json({ 
+      error: 'Erro interno no servidor',
+      details: error.message 
+    });
   }
 });
 
