@@ -192,14 +192,20 @@ app.post('/api/login', async (req, res) => {
       }
     } else {
       // Primeiro login - autorizar dispositivo
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+      
+      // 🔧 CORREÇÃO: Truncar user-agent para caber no banco
+      const truncatedUserAgent = userAgent.substring(0, 95);
+      const truncatedDeviceName = userAgent.substring(0, 95);
+      
       const { error: deviceError } = await supabase
         .from('authorized_devices')
         .insert({
           user_id: userData.id,
           device_token: deviceToken,
-          device_name: req.headers['user-agent'] || 'Unknown',
+          device_name: truncatedDeviceName,
           ip_address: cleanIP,
-          user_agent: req.headers['user-agent'] || 'Unknown'
+          user_agent: truncatedUserAgent
         });
 
       if (deviceError) {
