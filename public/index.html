@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="favicon.png">
-    <title>Sistema I.R. Comércio - Login</title>
+    <link rel="icon" type="png" href="I.R.-COMERCIO-E-MATERIAIS-ELETRICOS-PRETO.png">
+    <title>Portal</title>
     <style>
         :root {
             --primary: #ff5100;
@@ -429,56 +429,43 @@
         // ======== CONFIGURAÇÃO ====================
         // ==========================================
         const API_URL = window.location.origin + '/api';
-// ==========================================
-// ======== PERMISSÕES POR USUÁRIO ==========
-// ==========================================
 
-// Defina aqui quais módulos cada usuário pode ver
-const USER_PERMISSIONS = {
-    // Administradores (veem tudo)
-    'Roberto': ['pregões', 'compra', 'tabela-precos', 'cotacoes-frete', 'vendas', 'faturamento', 'estoque', 'documentos'],
-    'Rosemeire': ['faturamento', 'receber', 'pagamento', 'documentos'],
-    
-    // Equipe de Vendas
-    'vendas': ['pregões', 'compra', 'tabela-precos', 'cotacoes-frete', 'vendas', 'faturamento', 'estoque', 'documentos'],
-    'vendas2': ['pregões', 'compra', 'tabela-precos', 'cotacoes-frete', 'vendas', 'faturamento', 'estoque', 'documentos'],
-    
-    // Equipe Financeira
-    'financeiro1': ['faturamento', 'receber', 'pagamento', 'documentos'],
-    'financeiro2': ['faturamento', 'receber', 'pagamento', 'documentos'],
-    
-    // Almoxarifado/Logística
-    'almox': ['cotacoes-frete', 'controle-frete', 'transportadoras', 'estoque'],
-};
+        // ==========================================
+        // ======== PERMISSÕES POR USUÁRIO ==========
+        // ==========================================
+        const USER_PERMISSIONS = {
+            'Roberto': ['pregões', 'compra', 'tabela-precos', 'cotacoes-frete', 'vendas', 'faturamento', 'estoque', 'documentos'],
+            'Rosemeire': ['faturamento', 'receber', 'pagamento', 'documentos'],
+            'vendas': ['pregões', 'compra', 'tabela-precos', 'cotacoes-frete', 'vendas', 'faturamento', 'estoque', 'documentos'],
+            'vendas2': ['pregões', 'compra', 'tabela-precos', 'cotacoes-frete', 'vendas', 'faturamento', 'estoque', 'documentos'],
+            'financeiro1': ['faturamento', 'receber', 'pagamento', 'documentos'],
+            'financeiro2': ['faturamento', 'receber', 'pagamento', 'documentos'],
+            'almox': ['cotacoes-frete', 'controle-frete', 'transportadoras', 'estoque'],
+        };
 
-        
         // URLs dos módulos
         const MODULES = [
-
- {
+            {
                 id: 'vendas',
                 name: 'Painel de Vendas',
                 description: 'Faturamento e valores de comissões.',
                 url: null,
                 available: false
             },
-            
-{
+            {
                 id: 'pregões',
                 name: 'Pregões',
                 description: 'Procedimentos e documentação relacionados aos processos de licitação',
                 url: null,
                 available: false
             },
-            
-{
+            {
                 id: 'compra',
                 name: 'Ordens de Compra',
                 description: 'Consulta e atualiza preços de produtos e serviços.',
                 url: null,
                 available: false
             },
-            
             {
                 id: 'tabela-precos',
                 name: 'Tabela de Preços',
@@ -493,8 +480,6 @@ const USER_PERMISSIONS = {
                 url: 'https://cotacoes-frete-aikc.onrender.com',
                 available: true
             },
-
-            
             {
                 id: 'controle-frete',
                 name: 'Controle de Frete',
@@ -502,7 +487,6 @@ const USER_PERMISSIONS = {
                 url: null,
                 available: false
             },
-
             {
                 id: 'transportadoras',
                 name: 'Transportadoras',
@@ -510,7 +494,6 @@ const USER_PERMISSIONS = {
                 url: null,
                 available: false
             },
-            
             {
                 id: 'faturamento',
                 name: 'Pedidos de Faturamento',
@@ -518,38 +501,34 @@ const USER_PERMISSIONS = {
                 url: null,
                 available: false
             },
-{
+            {
                 id: 'receber',
                 name: 'Contas a Receber',
                 description: 'Pagamentos pendentes para empresa.',
                 url: null,
                 available: false
             },
-            
-{
+            {
                 id: 'pagamento',
                 name: 'Contas a Pagar',
                 description: 'Compromissos financeiros da empresa.',
                 url: null,
                 available: false
-            }
-
-                {
+            },
+            {
                 id: 'estoque',
                 name: 'Estoque',
                 description: 'Gestão e processos relacionados a entrada, saída e inventário de materiais e suprimentos.',
                 url: null,
                 available: false
             },
-
             {
                 id: 'documentos',
                 name: 'Documentos',
                 description: 'Organização e armazenamento de documentos e pastas',
                 url: null,
                 available: false
-            },
-            
+            }
         ];
 
         let deviceToken = null;
@@ -643,12 +622,10 @@ const USER_PERMISSIONS = {
         // ======== VERIFICAÇÃO PERIÓDICA DE SESSÃO =
         // ==========================================
         function startSessionCheck() {
-            // Limpar intervalo anterior se existir
             if (sessionCheckInterval) {
                 clearInterval(sessionCheckInterval);
             }
 
-            // Verificar a cada 30 segundos
             sessionCheckInterval = setInterval(async () => {
                 const sessionInfo = sessionStorage.getItem('irUserSession');
                 if (!sessionInfo) {
@@ -663,7 +640,7 @@ const USER_PERMISSIONS = {
                     stopSessionCheck();
                     forceLogout('Sua sessão expirou ou foi invalidada');
                 }
-            }, 30000); // 30 segundos
+            }, 30000);
         }
 
         function stopSessionCheck() {
@@ -700,7 +677,13 @@ const USER_PERMISSIONS = {
             const modulesGrid = document.getElementById('modulesGrid');
             modulesGrid.innerHTML = '';
             
+            // Obter permissões do usuário
+            const userPermissions = USER_PERMISSIONS[sessionInfo.username] || [];
+            
             MODULES.forEach(module => {
+                // Verificar se o usuário tem permissão para ver este módulo
+                if (!userPermissions.includes(module.id)) return;
+                
                 if (module.adminOnly && !sessionInfo.isAdmin) return;
                 
                 const card = document.createElement('div');
@@ -798,7 +781,6 @@ const USER_PERMISSIONS = {
                 document.getElementById('deviceInfo').textContent = 
                     `Dispositivo: ${deviceToken.substr(0, 15)}... | IP: ${publicIP || 'Não detectado'}`;
                 
-                // Verificar sessão ativa
                 const sessionInfo = sessionStorage.getItem('irUserSession');
                 if (sessionInfo) {
                     const session = JSON.parse(sessionInfo);
@@ -818,7 +800,6 @@ const USER_PERMISSIONS = {
 
         window.addEventListener('DOMContentLoaded', init);
 
-        // Detectar quando a janela fica visível novamente
         document.addEventListener('visibilitychange', async () => {
             if (!document.hidden) {
                 const sessionInfo = sessionStorage.getItem('irUserSession');
