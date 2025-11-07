@@ -6,16 +6,42 @@
     <link rel="icon" type="png" href="I.R.-COMERCIO-E-MATERIAIS-ELETRICOS-PRETO.png">
     <title>Portal</title>
     <style>
+        /* ============================================
+           VARIÁVEIS BASE (DARK THEME - PADRÃO)
+           ============================================ */
         :root {
             --primary: #ff5100;
             --primary-dark: #E67E00;
-            --bg-card: #FFFFFF;
-            --text-primary: #1E1E1E;
-            --text-secondary: #666666;
-            --border-color: #E5E5E5;
+            --primary-light: #FF6A1A;
+            --bg-primary: #000000;
+            --bg-secondary: #0A0A0A;
+            --bg-card: #1A1A1A;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0A0A0;
+            --border-color: rgba(255, 81, 0, 0.15);
+            --input-bg: #2A2A2A;
             --error: #EF4444;
             --success: #22C55E;
             --warning: #F59E0B;
+            --shadow: rgba(0, 0, 0, 0.5);
+            --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* ============================================
+           LIGHT THEME (quando navegador está em light mode)
+           ============================================ */
+        @media (prefers-color-scheme: light) {
+            :root {
+                --bg-primary: #FFFFFF;
+                --bg-secondary: #F5F5F5;
+                --bg-card: #FFFFFF;
+                --text-primary: #1E1E1E;
+                --text-secondary: #666666;
+                --border-color: #E5E5E5;
+                --input-bg: #FFFFFF;
+                --shadow: rgba(0, 0, 0, 0.08);
+                --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            }
         }
 
         * {
@@ -26,8 +52,10 @@
 
         body {
             font-family: 'Inter', 'Segoe UI', Roboto, Arial, sans-serif;
-            background: linear-gradient(135deg, #F5F5F5 0%, #FFFFFF 100%);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
             min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         body::before {
@@ -38,8 +66,8 @@
             width: 100%;
             height: 100%;
             background: 
-                radial-gradient(circle at 20% 50%, rgba(255, 140, 0, 0.03) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(255, 140, 0, 0.02) 0%, transparent 50%);
+                radial-gradient(circle at 20% 50%, rgba(255, 81, 0, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255, 81, 0, 0.02) 0%, transparent 50%);
             pointer-events: none;
             z-index: 0;
         }
@@ -51,6 +79,9 @@
             z-index: 1;
         }
 
+        /* ============================================
+           TELA DE LOGIN
+           ============================================ */
         .login-screen {
             width: 100%;
             min-height: 100vh;
@@ -76,7 +107,27 @@
             height: 220px;
             object-fit: contain;
             margin-bottom: 1rem;
-            filter: drop-shadow(0 4px 12px rgba(255, 140, 0, 0.15));
+            filter: drop-shadow(0 4px 12px rgba(255, 81, 0, 0.15));
+            transition: opacity 0.3s ease;
+        }
+
+        /* Logo escura visível apenas no tema escuro */
+        .logo-dark {
+            display: block;
+        }
+
+        .logo-light {
+            display: none;
+        }
+
+        @media (prefers-color-scheme: light) {
+            .logo-dark {
+                display: none;
+            }
+            
+            .logo-light {
+                display: block;
+            }
         }
 
         .form-group {
@@ -96,19 +147,18 @@
             padding: 18px 20px;
             border: 2px solid var(--border-color);
             border-radius: 14px;
-            background-color: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
+            background-color: var(--input-bg);
             color: var(--text-primary);
             font-size: 1.05rem;
             transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 8px var(--shadow);
         }
 
         input:focus {
             outline: none;
             border-color: var(--primary);
-            background-color: #FFFFFF;
-            box-shadow: 0 4px 16px rgba(255, 140, 0, 0.15);
+            background-color: var(--bg-card);
+            box-shadow: 0 4px 16px rgba(255, 81, 0, 0.2);
             transform: translateY(-1px);
         }
 
@@ -129,6 +179,8 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            padding: 0;
+            margin: 0;
         }
 
         .toggle-password:hover {
@@ -146,7 +198,7 @@
             font-weight: 700;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 8px 24px rgba(255, 140, 0, 0.4);
+            box-shadow: 0 8px 24px rgba(255, 81, 0, 0.4);
             text-transform: uppercase;
             letter-spacing: 1px;
         }
@@ -158,7 +210,7 @@
 
         .btn-login:hover:not(:disabled) {
             transform: translateY(-3px);
-            box-shadow: 0 12px 32px rgba(255, 140, 0, 0.5);
+            box-shadow: 0 12px 32px rgba(255, 81, 0, 0.5);
         }
 
         .btn-login:active:not(:disabled) {
@@ -172,7 +224,7 @@
             font-size: 0.95rem;
             display: none;
             font-weight: 500;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 12px var(--shadow);
         }
 
         .message.show {
@@ -180,19 +232,19 @@
         }
 
         .message.error {
-            background: rgba(239, 68, 68, 0.12);
+            background: rgba(239, 68, 68, 0.15);
             border-left: 4px solid var(--error);
             color: #DC2626;
         }
 
         .message.success {
-            background: rgba(34, 197, 94, 0.12);
+            background: rgba(34, 197, 94, 0.15);
             border-left: 4px solid var(--success);
             color: #15803D;
         }
 
         .message.warning {
-            background: rgba(245, 158, 11, 0.12);
+            background: rgba(245, 158, 11, 0.15);
             border-left: 4px solid var(--warning);
             color: #B45309;
         }
@@ -200,29 +252,30 @@
         .device-info {
             margin-top: 2.5rem;
             padding: 1.2rem;
-            background: rgba(255, 255, 255, 0.5);
-            backdrop-filter: blur(10px);
+            background: var(--bg-card);
             border-radius: 12px;
             font-size: 0.8rem;
             color: var(--text-secondary);
             text-align: center;
-            border: 1px solid rgba(255, 140, 0, 0.1);
+            border: 1px solid var(--border-color);
         }
 
+        /* ============================================
+           DASHBOARD
+           ============================================ */
         .dashboard-screen {
             display: none;
             min-height: 100vh;
         }
 
         .dashboard-header {
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(20px);
+            background: var(--bg-card);
             padding: 2rem 2.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            border-bottom: 1px solid rgba(255, 140, 0, 0.1);
+            box-shadow: var(--card-shadow);
+            border-bottom: 1px solid var(--border-color);
         }
 
         .user-welcome {
@@ -284,20 +337,20 @@
         }
 
         .module-card {
-            background: rgba(255, 255, 255, 0.98);
+            background: var(--bg-card);
             border-radius: 16px;
             padding: 1.8rem 2rem;
             cursor: pointer;
             transition: all 0.4s ease;
             border: 1px solid var(--border-color);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            box-shadow: var(--card-shadow);
             min-height: 160px;
         }
 
         .module-card:hover {
             transform: translateY(-8px);
             border-color: var(--primary);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+            box-shadow: 0 12px 32px rgba(255, 81, 0, 0.2);
         }
 
         .module-card.disabled {
@@ -345,6 +398,9 @@
             display: none !important;
         }
 
+        /* ============================================
+           RESPONSIVIDADE
+           ============================================ */
         @media (max-width: 768px) {
             .dashboard-header {
                 flex-direction: column;
@@ -368,9 +424,15 @@
         <div id="loginScreen" class="login-screen">
             <div class="login-content">
                 <div class="logo-container">
+                    <!-- Logo para tema escuro -->
+                    <img src="I.R.-COMERCIO-MATERIAIS-ELETRICOS-LTDA.png" 
+                         alt="Logo I.R. Comércio" 
+                         class="logo-img logo-dark" 
+                         onerror="this.style.display='none'">
+                    <!-- Logo para tema claro -->
                     <img src="I.R.-COMERCIO-E-MATERIAIS-ELETRICOS.png" 
                          alt="Logo I.R. Comércio" 
-                         class="logo-img" 
+                         class="logo-img logo-light" 
                          onerror="this.style.display='none'">
                 </div>
 
