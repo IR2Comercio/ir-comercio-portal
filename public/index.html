@@ -254,17 +254,6 @@
             color: #B45309;
         }
 
-        .device-info {
-            margin-top: 2.5rem;
-            padding: 1.2rem;
-            background: var(--bg-card);
-            border-radius: 12px;
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            text-align: center;
-            border: 1px solid var(--border-color);
-        }
-
         /* ============================================
            DASHBOARD
            ============================================ */
@@ -473,10 +462,6 @@
                         Entrar
                     </button>
                 </form>
-
-                <div class="device-info" id="deviceInfo">
-                    Verificando dispositivo...
-                </div>
             </div>
         </div>
 
@@ -487,7 +472,7 @@
                     <div>
                         <div class="welcome-text">I.R. COMÉRCIO E MATERIAIS ELÉTRICOS LTDA</div>
                         <div class="user-info">
-                            Olá, <span class="user-name" id="userName"></span>
+                            <span id="greetingText"></span>, <span class="user-name" id="userName"></span>
                         </div>
                     </div>
                 </div>
@@ -612,6 +597,26 @@
         let deviceToken = null;
         let publicIP = null;
         let sessionCheckInterval = null;
+
+        // ==========================================
+        // ======== SAUDAÇÃO BASEADA NO HORÁRIO =====
+        // ==========================================
+        function getGreeting() {
+            // Obtém a hora no fuso horário de Brasília (UTC-3)
+            const brasiliaTime = new Date().toLocaleString('en-US', { 
+                timeZone: 'America/Sao_Paulo',
+                hour12: false 
+            });
+            const hour = new Date(brasiliaTime).getHours();
+            
+            if (hour >= 0 && hour < 12) {
+                return 'Bom dia';
+            } else if (hour >= 12 && hour < 18) {
+                return 'Boa tarde';
+            } else {
+                return 'Boa noite';
+            }
+        }
 
         // ==========================================
         // ======== GERAÇÃO DE TOKEN ================
@@ -750,6 +755,9 @@
         function showDashboard(sessionInfo) {
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('dashboardScreen').style.display = 'block';
+            
+            // Define a saudação baseada no horário
+            document.getElementById('greetingText').textContent = getGreeting();
             document.getElementById('userName').textContent = sessionInfo.name;
             
             const modulesGrid = document.getElementById('modulesGrid');
@@ -855,9 +863,6 @@
             try {
                 deviceToken = getOrCreateDeviceToken();
                 publicIP = await getPublicIP();
-                
-                document.getElementById('deviceInfo').textContent = 
-                    `Dispositivo: ${deviceToken.substr(0, 15)}... | IP: ${publicIP || 'Não detectado'}`;
                 
                 const sessionInfo = sessionStorage.getItem('irUserSession');
                 if (sessionInfo) {
