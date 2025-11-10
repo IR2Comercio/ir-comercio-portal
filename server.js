@@ -8,11 +8,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ==========================================
-// ======== CONFIGURAÇÃO - IP AUTORIZADO ====
-// ==========================================
-const AUTHORIZED_IP = '187.36.172.217';
-
-// ==========================================
 // ======== CONFIGURAÇÃO DO SUPABASE ========
 // ==========================================
 const supabaseUrl = process.env.SUPABASE_URL;
